@@ -2,6 +2,7 @@ from drone import Drone
 from data_capture import record_data
 import multiprocessing
 import time
+import os
 
 if __name__ == "__main__":
     # Building
@@ -21,7 +22,9 @@ if __name__ == "__main__":
     finish_path_flag = multiprocessing.Event()
     finish_flag = multiprocessing.Event()
 
-    save_dir = "D:/Imperial/FYP/captured_data/airsim_drone_mode/test"
+    save_dir = "D:/Imperial/FYP/captured_data/airsim_drone_mode/val"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
     recording_freq = 1
     simulation_clock = 0.5
     data_recorder = multiprocessing.Process(
@@ -31,4 +34,5 @@ if __name__ == "__main__":
     data_recorder.daemon = True
     data_recorder.start()
     time.sleep(5)
-    drone.start_movement(start_path_flag, finish_path_flag, finish_flag)
+    # drone.start_grid_movement(start_path_flag, finish_path_flag, finish_flag)
+    drone.start_random_movement(start_path_flag, finish_path_flag, finish_flag)

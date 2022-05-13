@@ -43,6 +43,12 @@ def get_trajectory(prev_total_grid, x_vals, y_vals, z_vals):
 class Drone:
     def __init__(self,  x_min, x_max, y_min, y_max, alt_min, alt_max, res_x=4, res_y=4, res_z=2, res_yaw=2, speed=2) -> None:
         self.speed = speed
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+        self.alt_min = alt_min
+        self.alt_max = alt_max
         self.x_vals = np.arange(x_min, x_max + 1, res_x)
         self.y_vals = np.arange(y_min, y_max + 1, res_y)
         self.z_vals = np.arange(alt_max, alt_min + 1, res_z)
@@ -81,7 +87,7 @@ class Drone:
         self.client.enableApiControl(False)
         print("done.")
 
-    def start_movement(self, start_path_flag, finish_path_flag, finish_flag):
+    def start_grid_movement(self, start_path_flag, finish_path_flag, finish_flag):
         num_of_points = 0
         total_grid = [[[None for _ in self.z_vals] for _ in self.y_vals] for _ in self.x_vals]
         for i, x in enumerate(self.x_vals):
@@ -131,3 +137,23 @@ class Drone:
         finish_flag.set()
         self.land()
 
+    def start_random_movement(self, start_path_flag, finish_path_flag, finish_flag):
+        def get_random_x_y_alt():
+            return random.uniform(self.x_min, self.x_max), random.uniform(self.y_min, self.y_max), random.uniform(self.alt_min, self.alt_max)
+
+        random_x_y_alt = [get_random_x_y_alt() for i in range(20)]
+        print(random_x_y_alt)
+        path = [airsim.Vector3r(*point) for point in random_x_y_alt]
+        x, y, z = random_x_y_alt[0]
+        self.client.simSetVehiclePose(airsim.Pose(path[0], airsim.to_quaternion(0, 0, 0)), True)
+        time.sleep(1)
+        finish_path_flag.clear()
+        start_path_flag.set()
+        self.client.moveOnPathAsync(path, self.speed, 120,
+                                    airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0)).join()
+        start_path_flag.clear()
+        finish_path_flag.set()
+        
+        time.sleep(2)
+        finish_flag.set()
+        self.land()
