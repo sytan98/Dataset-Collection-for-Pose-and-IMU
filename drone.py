@@ -6,11 +6,11 @@ import math
 import random
 import time
 from itertools import product
+from data_capture import record_instance, write_headers
 from utils import flatten, has_items
 random.seed(123)
 
-def get_trajectory(prev_total_grid, x_vals, y_vals, z_vals):
-    total_grid = prev_total_grid.copy()
+def get_trajectory_and_update_grid(total_grid, x_vals, y_vals, z_vals):
     is_start_point_found = False
     while not is_start_point_found:
         start_x, start_y, start_z = random.randint(0, len(x_vals)-1), random.randint(0, len(y_vals)-1), random.randint(0, len(z_vals)-1)
@@ -37,7 +37,7 @@ def get_trajectory(prev_total_grid, x_vals, y_vals, z_vals):
             if valid_candidates:
                 queue.append(random.sample(valid_candidates, k= 1)[0])
             
-    return path, total_grid
+    return path
 
 
 class Drone:
@@ -105,9 +105,8 @@ class Drone:
         paths = []
         
         while has_items(flatten(total_grid)):
-            path, remaining_total_grid = get_trajectory(total_grid, self.x_vals, self.y_vals, self.z_vals)
+            path = get_trajectory_and_update_grid(total_grid, self.x_vals, self.y_vals, self.z_vals)
             paths.append(path)
-            total_grid = remaining_total_grid
 
         print(paths)
         print("Path lengths")
@@ -135,6 +134,57 @@ class Drone:
 
         time.sleep(2)
         finish_flag.set()
+        self.land()
+
+
+    def start_grid_movement_with_recording(self, save_dir):
+        num_of_points = 0
+        total_grid = [[[None for _ in self.z_vals] for _ in self.y_vals] for _ in self.x_vals]
+        for i, x in enumerate(self.x_vals):
+            for j, y in enumerate(self.y_vals):
+                for k, z in enumerate(self.z_vals):
+                    random_start_yaw = random.random() * 2*math.pi
+                    points = []
+                    for yaw_shift in self.yaw_vals:
+                        yaw = random_start_yaw + yaw_shift
+                        yaw = yaw if yaw < 2*math.pi else yaw - 2*math.pi
+                        print(f"x: {x}, y: {y}, z: {z}, yaw: {math.degrees(yaw)} deg")
+                        points.append((x, y, z, int(math.degrees(yaw))))
+                        num_of_points += 1
+                    total_grid[i][j][k] = points
+        paths = []
+        
+        while has_items(flatten(total_grid)):
+            path = get_trajectory_and_update_grid(total_grid, self.x_vals, self.y_vals, self.z_vals)
+            paths.append(path)
+
+        print(paths)
+        print("Path lengths")
+        for path in paths:
+            print(f"length of path = {len(path)}")
+        print(f"remaining ({len(total_grid)}) {total_grid}")
+        print(f"total number = {num_of_points}")
+        
+        trajectory_index = 0 
+        for path in paths:
+            index = 0
+            print("Starting new path")
+            x, y, z, yaw = path[0]
+            self.client.simSetVehiclePose(airsim.Pose(
+                                airsim.Vector3r(float(x), float(y), float(z)), airsim.to_quaternion(0, 0, float(yaw))), True)
+            time.sleep(1)
+            image_directory = os.path.join(save_dir, f'images_{trajectory_index}')
+            file = open(os.path.join(save_dir, f"airsim_rec_{trajectory_index}.txt"), "w")
+            write_headers(file)
+            for waypoint in path:
+                print(waypoint)
+                x, y, z, yaw = waypoint
+                self.client.moveToPositionAsync(float(x), float(y), float(z), self.speed, drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom, yaw_mode=airsim.YawMode(False, float(yaw))).join()
+                record_instance(self.client, image_directory, index, file)
+                index += 1
+            time.sleep(2)
+            trajectory_index += 1
+        time.sleep(2)
         self.land()
 
     def start_random_movement(self, start_path_flag, finish_path_flag, finish_flag):
