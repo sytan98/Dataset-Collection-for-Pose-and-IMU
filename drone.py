@@ -6,7 +6,7 @@ import math
 import random
 import time
 from itertools import product
-from data_capture import record_instance, write_headers
+# from data_capture import record_instance, write_headers
 from utils import flatten, has_items
 random.seed(123)
 
@@ -116,7 +116,7 @@ class Drone:
         print(f"total number = {num_of_points}")
         
         for path in paths:
-            if len(path) > 5:
+            if len(path) > 50:
                 print("Starting new path")
                 x, y, z, yaw = path[0]
                 self.client.simSetVehiclePose(airsim.Pose(
@@ -131,60 +131,10 @@ class Drone:
                 start_path_flag.clear()
                 finish_path_flag.set()
                 time.sleep(2)
+                break
 
         time.sleep(2)
         finish_flag.set()
-        self.land()
-
-
-    def start_grid_movement_with_recording(self, save_dir):
-        num_of_points = 0
-        total_grid = [[[None for _ in self.z_vals] for _ in self.y_vals] for _ in self.x_vals]
-        for i, x in enumerate(self.x_vals):
-            for j, y in enumerate(self.y_vals):
-                for k, z in enumerate(self.z_vals):
-                    random_start_yaw = random.random() * 2*math.pi
-                    points = []
-                    for yaw_shift in self.yaw_vals:
-                        yaw = random_start_yaw + yaw_shift
-                        yaw = yaw if yaw < 2*math.pi else yaw - 2*math.pi
-                        print(f"x: {x}, y: {y}, z: {z}, yaw: {math.degrees(yaw)} deg")
-                        points.append((x, y, z, int(math.degrees(yaw))))
-                        num_of_points += 1
-                    total_grid[i][j][k] = points
-        paths = []
-        
-        while has_items(flatten(total_grid)):
-            path = get_trajectory_and_update_grid(total_grid, self.x_vals, self.y_vals, self.z_vals)
-            paths.append(path)
-
-        print(paths)
-        print("Path lengths")
-        for path in paths:
-            print(f"length of path = {len(path)}")
-        print(f"remaining ({len(total_grid)}) {total_grid}")
-        print(f"total number = {num_of_points}")
-        
-        trajectory_index = 0 
-        for path in paths:
-            index = 0
-            print("Starting new path")
-            x, y, z, yaw = path[0]
-            self.client.simSetVehiclePose(airsim.Pose(
-                                airsim.Vector3r(float(x), float(y), float(z)), airsim.to_quaternion(0, 0, float(yaw))), True)
-            time.sleep(1)
-            image_directory = os.path.join(save_dir, f'images_{trajectory_index}')
-            file = open(os.path.join(save_dir, f"airsim_rec_{trajectory_index}.txt"), "w")
-            write_headers(file)
-            for waypoint in path:
-                print(waypoint)
-                x, y, z, yaw = waypoint
-                self.client.moveToPositionAsync(float(x), float(y), float(z), self.speed, drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom, yaw_mode=airsim.YawMode(False, float(yaw))).join()
-                record_instance(self.client, image_directory, index, file)
-                index += 1
-            time.sleep(2)
-            trajectory_index += 1
-        time.sleep(2)
         self.land()
 
     def start_random_movement(self, start_path_flag, finish_path_flag, finish_flag):
@@ -194,13 +144,49 @@ class Drone:
         random_x_y_alt = [get_random_x_y_alt() for i in range(20)]
         print(random_x_y_alt)
         path = [airsim.Vector3r(*point) for point in random_x_y_alt]
-        x, y, z = random_x_y_alt[0]
         self.client.simSetVehiclePose(airsim.Pose(path[0], airsim.to_quaternion(0, 0, 0)), True)
         time.sleep(1)
         finish_path_flag.clear()
         start_path_flag.set()
         self.client.moveOnPathAsync(path, self.speed, 120,
                                     airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0)).join()
+        start_path_flag.clear()
+        finish_path_flag.set()
+        
+        time.sleep(2)
+        finish_flag.set()
+        self.land()
+
+    def start_forward_movement(self, start_path_flag, finish_path_flag, finish_flag):
+        # train_path = [airsim.Vector3r(0, 0, -3), 
+        #               airsim.Vector3r(-4, 0, -3), 
+        #               airsim.Vector3r(-4, 0, -6), 
+        #               airsim.Vector3r(-4, 0, -3), 
+        #               airsim.Vector3r(-8, 0, -3), 
+        #               airsim.Vector3r(-8, 0, -6), 
+        #               airsim.Vector3r(0, 0, -6),
+        #               airsim.Vector3r(-8, 0, -3)]
+        # train_path = [airsim.Vector3r(0, 0, -3),  
+        #               airsim.Vector3r(-8, 0, -3), 
+        #               airsim.Vector3r(-8, 0, -3), 
+        #               airsim.Vector3r(0, 0, -6),
+        #               airsim.Vector3r(-8, 0, -3)]
+
+        # test_path = [airsim.Vector3r(-1, -3, -2), 
+        #              airsim.Vector3r(-4, -3, -2),
+        #              airsim.Vector3r(-4, -3, -7),
+        #              airsim.Vector3r(-8, -3, -7),]
+        test_path = [airsim.Vector3r(-1, -3, -2), 
+                     airsim.Vector3r(-4, -3, -7),
+                     airsim.Vector3r(-8, -3, -7),]
+        path = test_path
+        self.client.simSetVehiclePose(airsim.Pose(path[0], airsim.to_quaternion(0, 0, math.radians(270))), True)
+        time.sleep(5)
+        self.client.simPause(True)
+        finish_path_flag.clear()
+        start_path_flag.set()
+        self.client.moveOnPathAsync(path, self.speed, 120,
+                                    airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(False, 270)).join()
         start_path_flag.clear()
         finish_path_flag.set()
         

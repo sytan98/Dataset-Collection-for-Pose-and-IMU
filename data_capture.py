@@ -1,6 +1,5 @@
 import airsim
 import os
-import time
 
 def write_headers(file):
     file.writelines(
@@ -13,18 +12,18 @@ def write_headers(file):
                 'S_ANG_VEL_X\tS_ANG_VEL_Y\tS_ANG_VEL_Z\t'
                 'ImageFile\n'
                 )
-def record_instance(client, image_directory, index, file):
-    client.simPause(True)
+def record_img(client, image_directory, index):
     # Get image
     response = client.simGetImage("0", airsim.ImageType.Scene)
     if not os.path.exists(image_directory):
         os.makedirs(image_directory)
     airsim.write_file(os.path.join(image_directory, f'{index}.png'), response)
+
+def record_imu(client, index, file):
     img_name = f'{index}.png'
 
     # Get Pose
-    pose = client.simGetVehiclePose()
-    # print(current_pose)
+    pose = client.simGetCameraInfo("0").pose
 
     # Get Kinematics and imu
     kinematics = client.simGetGroundTruthKinematics()
@@ -32,7 +31,6 @@ def record_instance(client, image_directory, index, file):
 
     # Get timestamp (in ns)
     state = client.getMultirotorState()
-    # print(datetime.fromtimestamp(state.timestamp/1e9))
     timestamp = state.timestamp
 
     file.writelines( f' \t{timestamp}\t{pose.position.x_val:.8f}\t{pose.position.y_val:.8f}\t{pose.position.z_val:.8f}\t'
@@ -43,28 +41,37 @@ def record_instance(client, image_directory, index, file):
                     f'{imu_data.linear_acceleration.x_val:.8f}\t{imu_data.linear_acceleration.y_val:.8f}\t{imu_data.linear_acceleration.z_val:.8f}\t'
                     f'{imu_data.angular_velocity.x_val:.8f}\t{imu_data.angular_velocity.y_val:.8f}\t{imu_data.angular_velocity.z_val:.8f}\t'
                     f'{img_name}\n' )
-    client.simPause(False)
 
-def record_data(save_dir, recording_freq, simulation_clock, start_path_flag, finish_path_flag, finish_flag):
-    time_period = 1/recording_freq
-    print(f"Recording at {recording_freq}Hz (time period {time_period}s)")
+def record_data(save_dir, imu_recording_freq, img_recording_freq, sim_clk, start_path_flag, finish_path_flag, finish_flag):
+    imu_time_period = 1/imu_recording_freq
+    img_time_period = 1/img_recording_freq
+    print(f"Recording imu at {imu_recording_freq}Hz (time period {imu_time_period}s)")
+    print(f"Recording images at {img_recording_freq}Hz (time period {img_time_period}s)")
+    img_time_scale = int(img_time_period / imu_time_period)
+    print(f"Image saved for every {img_time_scale} imu recording")
     client = airsim.MultirotorClient()
     client.confirmConnection()
     client.enableApiControl(True)
     client.armDisarm(True)
     client.takeoffAsync().join()
-    trajectory_index = 0		
+    traj_idx = 0		
     while not finish_flag.is_set():
         if start_path_flag.is_set():
             print("Start Recording")
             index = 0
-            with open(os.path.join(save_dir, f"airsim_rec_{trajectory_index}.txt"), "w") as f:
+            # with open(os.path.join(save_dir, f"airsim_rec_{traj_idx}.txt"), "w") as f:
+            with open(os.path.join(save_dir, f"airsim_rec.txt"), "w") as f:
                 write_headers(f)
-                image_directory = os.path.join(save_dir, f'images_{trajectory_index}')
+                # image_directory = os.path.join(save_dir, f'images_{traj_idx}')
+                image_directory = os.path.join(save_dir, f'images')
                 while not finish_path_flag.is_set():
-                    record_instance(client, save_dir, image_directory, index)
-                    time.sleep(time_period * simulation_clock)
+                    record_imu(client, index, f)
+                    if index % img_time_scale == 0:
+                        record_img(client, image_directory, index)
+                    client.simContinueForTime(imu_time_period / sim_clk)
                     index += 1
-            trajectory_index += 1
+            traj_idx += 1
             print("End recording")
+        else:
+            print("Waiting to start recording")
 
