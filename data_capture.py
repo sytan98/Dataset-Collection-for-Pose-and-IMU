@@ -59,19 +59,19 @@ def record_data(save_dir, imu_recording_freq, img_recording_freq, sim_clk, start
         if start_path_flag.is_set():
             print("Start Recording")
             index = 0
-            # with open(os.path.join(save_dir, f"airsim_rec_{traj_idx}.txt"), "w") as f:
             with open(os.path.join(save_dir, f"airsim_rec.txt"), "w") as f:
                 write_headers(f)
-                # image_directory = os.path.join(save_dir, f'images_{traj_idx}')
                 image_directory = os.path.join(save_dir, f'images')
+                # client.simPause(True)
                 while not finish_path_flag.is_set():
                     record_imu(client, index, f)
                     if index % img_time_scale == 0:
+                        print(client.simIsPause())
                         record_img(client, image_directory, index)
-                    client.simContinueForTime(imu_time_period / sim_clk)
+                    # Uses CPU clock so needs to divide by sim clock
+                    # TODO: sometimes real sim_clk differs from sim clock set. Might be better to get the real the sim clock instead
+                    client.simContinueForTime(imu_time_period / sim_clk) 
                     index += 1
             traj_idx += 1
             print("End recording")
-        else:
-            print("Waiting to start recording")
 

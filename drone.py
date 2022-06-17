@@ -158,31 +158,23 @@ class Drone:
         self.land()
 
     def start_forward_movement(self, start_path_flag, finish_path_flag, finish_flag):
-        # train_path = [airsim.Vector3r(0, 0, -3), 
-        #               airsim.Vector3r(-4, 0, -3), 
-        #               airsim.Vector3r(-4, 0, -6), 
-        #               airsim.Vector3r(-4, 0, -3), 
-        #               airsim.Vector3r(-8, 0, -3), 
-        #               airsim.Vector3r(-8, 0, -6), 
-        #               airsim.Vector3r(0, 0, -6),
-        #               airsim.Vector3r(-8, 0, -3)]
-        # train_path = [airsim.Vector3r(0, 0, -3),  
-        #               airsim.Vector3r(-8, 0, -3), 
-        #               airsim.Vector3r(-8, 0, -3), 
-        #               airsim.Vector3r(0, 0, -6),
-        #               airsim.Vector3r(-8, 0, -3)]
+        train_path = [airsim.Vector3r(0, 0, -3), 
+                      airsim.Vector3r(-4, 0, -3), 
+                      airsim.Vector3r(-4, 0, -6), 
+                      airsim.Vector3r(-4, 0, -3), 
+                      airsim.Vector3r(-8, 0, -3), 
+                      airsim.Vector3r(-8, 0, -6), 
+                      airsim.Vector3r(0, 0, -6),
+                      airsim.Vector3r(-8, 0, -3)]
 
-        # test_path = [airsim.Vector3r(-1, -3, -2), 
-        #              airsim.Vector3r(-4, -3, -2),
-        #              airsim.Vector3r(-4, -3, -7),
-        #              airsim.Vector3r(-8, -3, -7),]
         test_path = [airsim.Vector3r(-1, -3, -2), 
+                     airsim.Vector3r(-4, -3, -2),
                      airsim.Vector3r(-4, -3, -7),
                      airsim.Vector3r(-8, -3, -7),]
+
         path = test_path
         self.client.simSetVehiclePose(airsim.Pose(path[0], airsim.to_quaternion(0, 0, math.radians(270))), True)
         time.sleep(5)
-        self.client.simPause(True)
         finish_path_flag.clear()
         start_path_flag.set()
         self.client.moveOnPathAsync(path, self.speed, 120,
