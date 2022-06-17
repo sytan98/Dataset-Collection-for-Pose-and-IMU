@@ -1,3 +1,6 @@
+# Ignore data files
+notebooks/data/
+
 # VSCode
 .vscode/
 
