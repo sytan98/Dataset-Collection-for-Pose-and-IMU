@@ -1,3 +1,9 @@
+"""
+Example:
+python .\main.py --save_dir "D:/Imperial/FYP/captured_data/airsim_drone_mode/building_10fps/check" --mode Train \
+    --imu_freq 1 --img_freq 1 --xyz_dim -8 2 -8 0 -2 -4 --grid_res 4 4 2 2
+"""
+
 from drone import Drone
 from data_capture import record_data
 import multiprocessing

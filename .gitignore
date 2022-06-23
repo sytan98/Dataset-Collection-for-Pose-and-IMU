@@ -1,5 +1,5 @@
 # Ignore data files
-notebooks/data/
+real_world_data_collection/data/
 
 # VSCode
 .vscode/

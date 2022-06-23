@@ -62,16 +62,20 @@ def record_data(save_dir, imu_recording_freq, img_recording_freq, sim_clk, start
             with open(os.path.join(save_dir, f"airsim_rec.txt"), "w") as f:
                 write_headers(f)
                 image_directory = os.path.join(save_dir, f'images')
-                # client.simPause(True)
+                client.simPause(True)
+                last = client.getMultirotorState().timestamp
                 while not finish_path_flag.is_set():
-                    record_imu(client, index, f)
-                    if index % img_time_scale == 0:
-                        print(client.simIsPause())
-                        record_img(client, image_directory, index)
+                    now = client.getMultirotorState().timestamp
+                    time_taken = float(now - last) / 10 ** 9
+                    if time_taken > imu_time_period:
+                        last = now
+                        record_imu(client, index, f)
+                        if index % img_time_scale == 0:
+                            record_img(client, image_directory, index)
+                        index += 1
                     # Uses CPU clock so needs to divide by sim clock
                     # TODO: sometimes real sim_clk differs from sim clock set. Might be better to get the real the sim clock instead
-                    client.simContinueForTime(imu_time_period / sim_clk) 
-                    index += 1
+                    client.simContinueForTime(imu_time_period / sim_clk / 4) 
             traj_idx += 1
             print("End recording")
 

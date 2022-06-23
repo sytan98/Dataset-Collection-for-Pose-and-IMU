@@ -6,9 +6,20 @@ import math
 import random
 import time
 from itertools import product
-# from data_capture import record_instance, write_headers
-from utils import flatten, has_items
 random.seed(123)
+
+def flatten(input_list):
+    """Recursively iterate through values in nested lists."""
+    for item in input_list:
+        if isinstance(item, list): # Use what ever nesting condition you need here
+            for child_item in flatten(item):
+                yield child_item
+        else:
+            yield item
+
+def has_items(seq):
+    """Checks if an iterator has any items."""
+    return any(1 for _ in seq)
 
 def get_trajectory_and_update_grid(total_grid, x_vals, y_vals, z_vals):
     is_start_point_found = False
@@ -112,11 +123,10 @@ class Drone:
         print("Path lengths")
         for path in paths:
             print(f"length of path = {len(path)}")
-        print(f"remaining ({len(total_grid)}) {total_grid}")
         print(f"total number = {num_of_points}")
         
         for path in paths:
-            if len(path) > 50:
+            if len(path) > 30:
                 print("Starting new path")
                 x, y, z, yaw = path[0]
                 self.client.simSetVehiclePose(airsim.Pose(
@@ -141,7 +151,7 @@ class Drone:
         def get_random_x_y_alt():
             return random.uniform(self.x_min, self.x_max), random.uniform(self.y_min, self.y_max), random.uniform(self.alt_min, self.alt_max)
 
-        random_x_y_alt = [get_random_x_y_alt() for i in range(20)]
+        random_x_y_alt = [get_random_x_y_alt() for i in range(15)]
         print(random_x_y_alt)
         path = [airsim.Vector3r(*point) for point in random_x_y_alt]
         self.client.simSetVehiclePose(airsim.Pose(path[0], airsim.to_quaternion(0, 0, 0)), True)
