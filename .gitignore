@@ -1,5 +1,6 @@
 # Ignore data files
 real_world_data_collection/data/
+report_plots/data/
 
 # VSCode
 .vscode/
