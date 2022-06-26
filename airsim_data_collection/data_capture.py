@@ -1,7 +1,11 @@
+from multiprocessing.synchronize import Event
 import airsim
 import os
 
-def write_headers(file):
+def write_headers(file) -> None:
+    '''
+    Write header titles for data text file 
+    '''
     file.writelines(
                 'Vehicle_name\ttimestamp\tPOS_X\tPOS_Y\tPOS_Z\t'
                 'Q_W\tQ_X\tQ_Y\tQ_Z\t'
@@ -12,14 +16,21 @@ def write_headers(file):
                 'S_ANG_VEL_X\tS_ANG_VEL_Y\tS_ANG_VEL_Z\t'
                 'ImageFile\n'
                 )
-def record_img(client, image_directory, index):
-    # Get image
+
+def record_img(client: airsim.MultirotorClient, image_directory: str, index: int) -> None:
+    '''
+    Record an image frame and save to a directory
+    '''
+
     response = client.simGetImage("0", airsim.ImageType.Scene)
     if not os.path.exists(image_directory):
         os.makedirs(image_directory)
     airsim.write_file(os.path.join(image_directory, f'{index}.png'), response)
 
-def record_imu(client, index, file):
+def record_imu(client: airsim.MultirotorClient, index: int, file):
+    '''
+    Record an instance of IMU and kinematics data 
+    '''
     img_name = f'{index}.png'
 
     # Get Pose
@@ -33,7 +44,7 @@ def record_imu(client, index, file):
     state = client.getMultirotorState()
     timestamp = state.timestamp
 
-    file.writelines( f' \t{timestamp}\t{pose.position.x_val:.8f}\t{pose.position.y_val:.8f}\t{pose.position.z_val:.8f}\t'
+    file.writelines(f' \t{timestamp}\t{pose.position.x_val:.8f}\t{pose.position.y_val:.8f}\t{pose.position.z_val:.8f}\t'
                     f'{pose.orientation.w_val:.8f}\t{pose.orientation.x_val:.8f}\t{pose.orientation.y_val:.8f}\t{pose.orientation.z_val:.8f}\t'
                     f'{kinematics.linear_acceleration.x_val:.8f}\t{kinematics.linear_acceleration.y_val:.8f}\t{kinematics.linear_acceleration.z_val:.8f}\t'
                     f'{kinematics.linear_velocity.x_val:.8f}\t{kinematics.linear_velocity.y_val:.8f}\t{kinematics.linear_velocity.z_val:.8f}\t'
@@ -42,7 +53,11 @@ def record_imu(client, index, file):
                     f'{imu_data.angular_velocity.x_val:.8f}\t{imu_data.angular_velocity.y_val:.8f}\t{imu_data.angular_velocity.z_val:.8f}\t'
                     f'{img_name}\n' )
 
-def record_data(save_dir, imu_recording_freq, img_recording_freq, sim_clk, start_path_flag, finish_path_flag, finish_flag):
+def record_data(save_dir: str, imu_recording_freq: int, img_recording_freq: int, 
+                sim_clk: float, start_path_flag: Event, finish_path_flag: Event, finish_flag: Event):
+    '''
+    Data Capture process which checks if time period for sampling has passed
+    '''
     imu_time_period = 1/imu_recording_freq
     img_time_period = 1/img_recording_freq
     print(f"Recording imu at {imu_recording_freq}Hz (time period {imu_time_period}s)")
@@ -53,12 +68,12 @@ def record_data(save_dir, imu_recording_freq, img_recording_freq, sim_clk, start
     client.confirmConnection()
     client.enableApiControl(True)
     client.armDisarm(True)
-    client.takeoffAsync().join()
-    traj_idx = 0		
+    client.takeoffAsync().join()	
     while not finish_flag.is_set():
         if start_path_flag.is_set():
             print("Start Recording")
             index = 0
+            
             with open(os.path.join(save_dir, f"airsim_rec.txt"), "w") as f:
                 write_headers(f)
                 image_directory = os.path.join(save_dir, f'images')
@@ -76,6 +91,5 @@ def record_data(save_dir, imu_recording_freq, img_recording_freq, sim_clk, start
                     # Uses CPU clock so needs to divide by sim clock
                     # TODO: sometimes real sim_clk differs from sim clock set. Might be better to get the real the sim clock instead
                     client.simContinueForTime(imu_time_period / sim_clk / 4) 
-            traj_idx += 1
             print("End recording")
 
