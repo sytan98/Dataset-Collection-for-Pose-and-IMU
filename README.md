@@ -20,8 +20,8 @@ These scripts enable the collection of two types of datasets:
 	- [colmap_processing.ipynb](real_world_data_collection/colmap_processing.ipynb): Python notebooks to obtain statistics and plots
 
 - report_plots: Contains python notebooks used to plot diagrams
-	- [generate_plots.ipynb](real_world_data_collection/generate_plots.ipynb): Python notebooks to obtain statistics and plots of experiments
-	- [visualise_traj.ipynb](real_world_data_collection/colmap_processing.ipynb): Python notebooks to plot trajectories and cameras of camera pose predictions
+	- [generate_plots.ipynb](report_plots/generate_plots.ipynb): Python notebooks to obtain statistics and plots of experiments
+	- [visualise_traj.ipynb](report_plots/visualise_traj.ipynb): Python notebooks to plot trajectories and cameras of camera pose predictions
 
 ## Main Dependencies
 We use three separate environments, one for ```main.py``` and one for ```generate_gt.py``` and one for python notebooks. Use conda to create an environment according to environment.yml. 
