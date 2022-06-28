@@ -1,35 +1,20 @@
+"""
+Example:
+python .\generate_gt.py --dir "D:/Imperial/FYP/captured_data/airsim_drone_mode/building_new/train" \
+    --train --imu_freq 100 --img_freq 10 --noise_level 2 --skip 5
+"""
+
 import pandas as pd
 import rowan
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from scipy import signal
 from scipy import integrate
-from ahrs.filters import AngularRate
 import os
 import argparse
-
-def convert_body_to_world(row):
-    body_acc = np.hstack([row["S_LIN_ACC_X"], row["S_LIN_ACC_Y"], row["S_LIN_ACC_Z"]]).astype(float)
-    r = R.from_quat(np.hstack([row["pure_imu_Q_X"], row["pure_imu_Q_Y"], row["pure_imu_Q_Z"], row["pure_imu_Q_W"]]))
-    world_acc = r.apply(body_acc)
-    return world_acc - np.array([0, 0, -9.81])
-
-def integrate_angular_vel(initial_q, ang_vel, timesteps):
-    cur_q =  initial_q
-    angular_rate = AngularRate()
-    for idx, (ang_vel_x, ang_vel_y, ang_vel_z) in enumerate(ang_vel):
-        cur_q = angular_rate.update(cur_q, 
-                                    np.hstack([ang_vel_x,
-                                               ang_vel_y, 
-                                               ang_vel_z]),
-                                    'closed', 
-                                    1,
-                                    timesteps[idx])
-        cur_q = rowan.normalize(cur_q)
-    return cur_q
-
-def calc_displacement(vel: float, accel: float, timestep: float) -> float:
-    return vel * timestep + 1/2 * accel * timestep ** 2 
+import sys
+sys.path.append("../")
+from utils import calc_displacement, convert_body_to_world_remove_grav, integrate_angular_vel_body
 
 def gen_imu_derived_rel_poses(dir:str , train: bool, noise_level: int, skip: int, imu_freq: int, img_freq: int) -> None:
     train_data = pd.read_csv(os.path.join(dir, 'airsim_rec.txt'), sep="\t")
@@ -103,16 +88,21 @@ def gen_imu_derived_rel_poses(dir:str , train: bool, noise_level: int, skip: int
     for row in train_data.iloc[1:,:].itertuples(index=False):
         ang_vel = [(row.prev_S_ANG_VEL_X, row.prev_S_ANG_VEL_Y, row.prev_S_ANG_VEL_Z)]
         timestep = [row.timestep]
-        start_q = integrate_angular_vel(start_q, ang_vel, timestep)
+        start_q = integrate_angular_vel_body(start_q, ang_vel, timestep)
         abs_results.append(start_q)
     imu_q_ahrs = pd.DataFrame(abs_results, columns=["pure_imu_Q_W", "pure_imu_Q_X", "pure_imu_Q_Y", "pure_imu_Q_Z"])
 
     train_data = pd.concat([train_data, imu_q_ahrs], axis=1)
 
     # Convert imu linear acceleration from body frame to world frame
-    train_data["S_LIN_ACC_X_world"] = train_data.apply(lambda row : convert_body_to_world(row)[0], axis = 1)
-    train_data["S_LIN_ACC_Y_world"] = train_data.apply(lambda row : convert_body_to_world(row)[1], axis = 1)
-    train_data["S_LIN_ACC_Z_world"] = train_data.apply(lambda row : convert_body_to_world(row)[2], axis = 1)
+    accel_world = train_data.apply(lambda row : 
+                    convert_body_to_world_remove_grav(
+                        np.hstack([row["S_LIN_ACC_X"], row["S_LIN_ACC_Y"], row["S_LIN_ACC_Z"]]).astype(float),
+                        np.hstack([row["pure_imu_Q_X"], row["pure_imu_Q_Y"], row["pure_imu_Q_Z"], row["pure_imu_Q_W"]])
+                    ), axis = 1)
+    accel_world = pd.DataFrame(accel_world.to_list(), columns=["S_LIN_ACC_X_world", "S_LIN_ACC_Y_world", "S_LIN_ACC_Z_world"])
+
+    train_data = pd.concat([train_data, accel_world], axis=1)
 
     vel_x = integrate.cumtrapz(train_data["S_LIN_ACC_X_world"], train_data["seconds"], initial=0)
     vel_y = integrate.cumtrapz(train_data["S_LIN_ACC_Y_world"], train_data["seconds"], initial=0)
@@ -175,7 +165,7 @@ def gen_imu_derived_rel_poses(dir:str , train: bool, noise_level: int, skip: int
         start_q = np.array([qw, qx, qy, qz])
         ang_vels = train_data[["prev_S_ANG_VEL_X", "prev_S_ANG_VEL_Y", "prev_S_ANG_VEL_Z"]].iloc[i-k+1:i+1,:].values
         timesteps = train_data[["timestep"]].iloc[i-k+1:i+1,:].values
-        cur_q = integrate_angular_vel(start_q, ang_vels, timesteps)
+        cur_q = integrate_angular_vel_body(start_q, ang_vels, timesteps)
         abs_results.append(cur_q)
 
     imu_q_ahrs = pd.DataFrame(abs_results, columns=["imu_Q_W", "imu_Q_X", "imu_Q_Y", "imu_Q_Z"])
@@ -212,11 +202,11 @@ def gen_imu_derived_rel_poses(dir:str , train: bool, noise_level: int, skip: int
 
     if train:
         if noise_level == 0:
-            filename = 'train_clean_check.txt' 
+            filename = 'train_clean.txt' 
         else:
-            filename = f'train_noisy_v{noise_level}_check.txt' 
+            filename = f'train_noisy_v{noise_level}.txt' 
     else:
-        filename = 'val_check.txt'  
+        filename = 'val.txt'  
     final_write_file.to_csv(os.path.join(dir, filename), 
                             header=True, 
                             index=None, 

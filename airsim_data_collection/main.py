@@ -7,7 +7,6 @@ python .\main.py --save_dir "D:/Imperial/FYP/captured_data/airsim_drone_mode/bui
     --imu_freq 100 --img_freq 10 --xyz_dim -8 2 -8 0 -2 -4 --path .\debug_test_path.txt
 """
 
-from process_imu import gen_imu_derived_rel_poses
 from drone import Drone
 from data_capture import record_data
 import multiprocessing
