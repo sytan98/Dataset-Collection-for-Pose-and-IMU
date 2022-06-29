@@ -41,6 +41,13 @@ The scripts in here enable the collection of synchronised IMU sensor values and 
 - Multiprocessing is used to launch a process to control the movement of the rover and the other process is used to collect data.
 - In order to collect synchronised data, the simulation is paused before every instance of data collection.
 
+Ground Truth Format
+Columns:
+| ImageFile | timestep | POS_X | POS_Y | POS_Z | Q_W | Q_X | Q_Y | Q_Z | imu_POS_X | imu_POS_Y | imu_POS_Z | imu_Q_W |imu_Q_X | imu_Q_Y | imu_Q_Z |
+
+IMU poses here are absolute poses, so camera pose regression model needs to calculate IMU derived relative poses by subtracting it with an original absolute pose of skip k frames before.
+Each ground truth text is created for a specific skip value in MapNet. When skip value used in [IMUMapNet](https://github.com/sytan98/imumapnet) changes, the ground truth poses need to be changed.
+
 ### How to use
 1. To record data on AirSim and run ```main.py```.
 This can be used to collect for dataset for train/test/predefined path.

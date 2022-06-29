@@ -230,7 +230,7 @@ if __name__ == "__main__":
 
     imu_colmap_df = pd.concat([imu_colmap_df[["ImageFile", "timestep", "POS_X", "POS_Y", "POS_Z", "Q_W", "Q_X", "Q_Y", "Q_Z"]], imu_trans, imu_q_rowan], axis = 1)
 
-    final_write_file = imu_colmap_df[["ImageFile", "timestep", 
+    final_write_file = imu_colmap_df[["ImageFile",
                                      "POS_X", "POS_Y", "POS_Z", 
                                      "Q_W", "Q_X", "Q_Y", "Q_Z",
                                      "imu_POS_X", "imu_POS_Y", "imu_POS_Z", 
@@ -247,15 +247,15 @@ if __name__ == "__main__":
     final_write_file.loc[0:k-1,'imu_Q_X'] = final_write_file.loc[0:k-1,'Q_X']
     final_write_file.loc[0:k-1,'imu_Q_Y'] = final_write_file.loc[0:k-1,'Q_Y']
     final_write_file.loc[0:k-1,'imu_Q_Z'] = final_write_file.loc[0:k-1,'Q_Z']
-    final_write_file.loc[0,'timestep'] = 0.0
 
     if args.train:
         if args.noise_level == 0:
-            filename = 'train_clean.txt' 
+            filename = 'train_clean' 
         else:
-            filename = f'train_noisy_v{args.noise_level}.txt' 
+            filename = f'train_noisy_v{args.noise_level}' 
+        filename += f'_skip_{args.skip}.txt'
     else:
-        filename = 'val_check.txt'  
+        filename = 'val.txt'  
     final_write_file.to_csv(os.path.join(args.save_dir, filename), 
                             header=True, 
                             index=None, 

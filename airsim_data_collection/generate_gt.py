@@ -177,10 +177,10 @@ def gen_imu_derived_rel_poses(dir:str , train: bool, noise_level: int, skip: int
     train_data["imu_Q_Z"] = imu_q_ahrs["imu_Q_Z"]
 
     final_write_file = train_data.iloc[::image_frame_step,:]
-    final_write_file = final_write_file[["ImageFile", "timestep", 
-                                "noisy_POS_X", "noisy_POS_Y", "noisy_POS_Z", "noisy_Q_W", "noisy_Q_X", "noisy_Q_Y", "noisy_Q_Z",
-                                "imu_POS_X", "imu_POS_Y", "imu_POS_Z", "imu_Q_W", "imu_Q_X","imu_Q_Y","imu_Q_Z"
-                                ]]
+    final_write_file = final_write_file[["ImageFile", 
+                                        "noisy_POS_X", "noisy_POS_Y", "noisy_POS_Z", "noisy_Q_W", "noisy_Q_X", "noisy_Q_Y", "noisy_Q_Z",
+                                        "imu_POS_X", "imu_POS_Y", "imu_POS_Z", "imu_Q_W", "imu_Q_X","imu_Q_Y","imu_Q_Z"
+                                        ]]
     final_write_file.reset_index(drop=True, inplace =True)
     final_write_file.rename(columns = {'noisy_POS_X':'POS_X', 
                                        'noisy_POS_Y':'POS_Y',
@@ -198,15 +198,16 @@ def gen_imu_derived_rel_poses(dir:str , train: bool, noise_level: int, skip: int
     final_write_file.loc[0:skip-1,'imu_Q_X'] = final_write_file.loc[0:skip-1,'Q_X']
     final_write_file.loc[0:skip-1,'imu_Q_Y'] = final_write_file.loc[0:skip-1,'Q_Y']
     final_write_file.loc[0:skip-1,'imu_Q_Z'] = final_write_file.loc[0:skip-1,'Q_Z']
-    final_write_file.loc[0,'timestep'] = 0.0
 
     if train:
         if noise_level == 0:
-            filename = 'train_clean.txt' 
+            filename = 'train_clean' 
         else:
-            filename = f'train_noisy_v{noise_level}.txt' 
+            filename = f'train_noisy_v{noise_level}' 
+        filename += f'_skip_{skip}.txt'
     else:
         filename = 'val.txt'  
+    
     final_write_file.to_csv(os.path.join(dir, filename), 
                             header=True, 
                             index=None, 
